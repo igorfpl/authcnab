@@ -16,7 +16,7 @@ public record Transacao(
 
   // Wither Pattern
   public Transacao withValor(BigDecimal valor) {
-    return new Transacao(
-        id, tipo, tipotran, valor, contaorigem, contadestino, reservado );
+  return new Transacao(
+    id, tipo, tipotran, valor, contaorigem, contadestino, reservado );
   }
 }

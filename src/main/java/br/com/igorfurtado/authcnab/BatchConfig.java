@@ -5,6 +5,7 @@ import java.math.BigDecimal;
 
 import javax.sql.DataSource;
 
+import org.springframework.batch.core.ItemReadListener;
 import org.springframework.batch.core.Job;
 import org.springframework.batch.core.Step;
 import org.springframework.batch.core.configuration.annotation.StepScope;
@@ -18,6 +19,7 @@ import org.springframework.batch.item.ItemWriter;
 import org.springframework.batch.item.database.JdbcBatchItemWriter;
 import org.springframework.batch.item.database.builder.JdbcBatchItemWriterBuilder;
 import org.springframework.batch.item.file.FlatFileItemReader;
+import org.springframework.batch.item.file.FlatFileParseException;
 import org.springframework.batch.item.file.builder.FlatFileItemReaderBuilder;
 import org.springframework.batch.item.file.transform.Range;
 import org.springframework.beans.factory.annotation.Value;
@@ -54,6 +56,22 @@ public class BatchConfig {
         .reader(reader)
         .processor(processor)
         .writer(writer)
+         .listener(new ItemReadListener<TransacaoCNAB>() {
+        @Override
+        public void beforeRead() {}
+        @Override
+        public void afterRead(TransacaoCNAB item) {}
+        @Override
+        public void onReadError(Exception ex) {
+          if (ex instanceof FlatFileParseException) {
+            FlatFileParseException ffpe = (FlatFileParseException) ex;
+            System.err.println("Erro ao ler linha " + ffpe.getLineNumber() +
+              ": " + ffpe.getInput() + "\nMensagem: " + ffpe.getMessage());
+          } else {
+            System.err.println("Erro ao ler item: " + ex.getMessage());
+          }
+        }
+      })
         .build();
   }
 
@@ -81,10 +99,15 @@ public class BatchConfig {
   @Bean
   ItemProcessor<TransacaoCNAB, Transacao> processor() {
     return item -> {
-      if ("003".equals(item.tipo())) { // Ou outro critério
+      int tres = 3;
+      if (tres == item.tipo()) {
         return null; // Retornar null faz com que o item seja ignorado
       }else{
       String somenteDigitos = item.valor().replaceAll("_", "");
+      String Destinoreplace = item.contadestino().replaceAll("_", "");
+      String Origemreplace = item.contaorigem().replaceAll("_", "");
+      Origemreplace = Origemreplace.trim();
+      Destinoreplace = Destinoreplace.trim();
       somenteDigitos = somenteDigitos.trim();
       BigDecimal valor = new BigDecimal(somenteDigitos);
       var valorNormalizado = valor
@@ -95,8 +118,8 @@ public class BatchConfig {
           item.tipo(), 
           item.tipotran(),
           valorNormalizado,
-          item.contaorigem(),
-          item.contadestino(),
+          Origemreplace,
+          Destinoreplace,
           item.reservado() 
           );
 
